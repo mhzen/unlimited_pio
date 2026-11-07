@@ -3,6 +3,7 @@
 #include <Arduino.h>
 
 #include "config/pins.h"
+#include "driver/gpio.h"
 
 namespace robot::hal {
 
@@ -49,26 +50,41 @@ void EncoderBank::readCounts(int32_t counts[kWheelCount]) const {
   interrupts();
 }
 
+void EncoderBank::reset() {
+  noInterrupts();
+  for (uint8_t i = 0; i < kWheelCount; ++i) {
+    counts_[i] = 0;
+  }
+  interrupts();
+}
+
 // `count += 1 / -1` instead of `++`/`--`: those are deprecated on
 // volatile-qualified integers in C++20 (-Wvolatile) and mean the same thing.
+//
+// gpio_get_level() instead of digitalRead(): it is IRAM-resident, so the ISR
+// cannot stall on a disabled flash cache (NVS writes, Wi-Fi flash access).
 void IRAM_ATTR EncoderBank::onLeftFront() {
-  counts_[index(Wheel::kLeftFront)] +=
-      digitalRead(pins::kLeftFrontEncoderB) ? 1 : -1;
+  const int level =
+      gpio_get_level(static_cast<gpio_num_t>(pins::kLeftFrontEncoderB));
+  counts_[index(Wheel::kLeftFront)] += level ? 1 : -1;
 }
 
 void IRAM_ATTR EncoderBank::onRightFront() {
-  counts_[index(Wheel::kRightFront)] +=
-      digitalRead(pins::kRightFrontEncoderB) ? 1 : -1;
+  const int level =
+      gpio_get_level(static_cast<gpio_num_t>(pins::kRightFrontEncoderB));
+  counts_[index(Wheel::kRightFront)] += level ? 1 : -1;
 }
 
 void IRAM_ATTR EncoderBank::onLeftBack() {
-  counts_[index(Wheel::kLeftBack)] +=
-      digitalRead(pins::kLeftBackEncoderB) ? 1 : -1;
+  const int level =
+      gpio_get_level(static_cast<gpio_num_t>(pins::kLeftBackEncoderB));
+  counts_[index(Wheel::kLeftBack)] += level ? 1 : -1;
 }
 
 void IRAM_ATTR EncoderBank::onRightBack() {
-  counts_[index(Wheel::kRightBack)] +=
-      digitalRead(pins::kRightBackEncoderB) ? 1 : -1;
+  const int level =
+      gpio_get_level(static_cast<gpio_num_t>(pins::kRightBackEncoderB));
+  counts_[index(Wheel::kRightBack)] += level ? 1 : -1;
 }
 
 }  // namespace robot::hal

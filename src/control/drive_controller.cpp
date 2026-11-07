@@ -4,6 +4,8 @@
 #include <math.h>
 
 #include "config/drive_config.h"
+#include "control/mixer.h"
+#include "control/wheel_pid.h"
 #include "core/math_util.h"
 #include "hal/encoder_bank.h"
 #include "hal/motor_driver.h"
@@ -86,8 +88,7 @@ void DriveController::update(uint32_t nowUs, bool hold) {
         wheel.targetPwm / drive_cfg::kMaxMotorPwm * drive_cfg::kMaxWheelCps;
 
     if (drive_cfg::kEnableWheelPid) {
-      wheel.outputPwm = calculatePid(wheel, i, dt);
-    } else {
+      wheel.outputPwm = calculateWheelPid(wheel, i, dt);    } else {
       wheel.integral = 0.0f;
       wheel.previousError = 0.0f;
       wheel.outputPwm = static_cast<int>(roundf(wheel.targetPwm));
@@ -121,41 +122,6 @@ float DriveController::headingCorrection() {
                           drive_cfg::kHeadingLockMaxOmega);
 }
 
-int DriveController::calculatePid(WheelState &wheel, size_t wheelIndex,
-                                  float dt) const {
-  const float error = wheel.targetCps - wheel.filteredCps;
-  const float feedforward = wheel.targetPwm;
-  const float proportional = drive_cfg::kWheelKp[wheelIndex] * error;
-
-  wheel.integral += error * dt;
-  if (drive_cfg::kWheelKi[wheelIndex] > 0.0f) {
-    const float stateLimit =
-        drive_cfg::kPidIntegralPwmLimit / drive_cfg::kWheelKi[wheelIndex];
-    wheel.integral =
-        math::clampFloat(wheel.integral, -stateLimit, stateLimit);
-  } else {
-    wheel.integral = 0.0f;
-  }
-
-  const float integralTerm =
-      drive_cfg::kWheelKi[wheelIndex] * wheel.integral;
-  const float derivative = (error - wheel.previousError) / dt;
-  wheel.previousError = error;
-
-  float output = feedforward + proportional + integralTerm +
-                 drive_cfg::kWheelKd[wheelIndex] * derivative;
-
-  if (fabsf(wheel.targetCps) < drive_cfg::kStopSpeedCps &&
-      fabsf(wheel.filteredCps) < drive_cfg::kStopSpeedCps) {
-    wheel.integral = 0.0f;
-    wheel.previousError = 0.0f;
-    output = 0.0f;
-  }
-
-  return constrain(static_cast<int>(roundf(output)),
-                   -drive_cfg::kMaxMotorPwm, drive_cfg::kMaxMotorPwm);
-}
-
 void DriveController::reset() {
   smoothVx_ = smoothVy_ = smoothOmega_ = 0.0f;
   headingActive_ = false;
@@ -170,28 +136,6 @@ void DriveController::reset() {
 }
 
 void DriveController::stop() { motors_->stopAll(); }
-
-void DriveController::mixWheels(float vx, float vy, float omega,
-                                float out[kWheelCount]) const {
-  out[index(Wheel::kLeftFront)] = vx + vy + omega;
-  out[index(Wheel::kRightFront)] = -vx + vy + omega;
-  out[index(Wheel::kLeftBack)] = vx - vy + omega;
-  out[index(Wheel::kRightBack)] = -vx - vy + omega;
-
-  float maximum = 0.0f;
-  for (uint8_t i = 0; i < kWheelCount; ++i) {
-    const float magnitude = fabsf(out[i]);
-    if (magnitude > maximum) maximum = magnitude;
-  }
-
-  if (maximum > drive_cfg::kMaxMotorPwm) {
-    const float scale =
-        static_cast<float>(drive_cfg::kMaxMotorPwm) / maximum;
-    for (uint8_t i = 0; i < kWheelCount; ++i) {
-      out[i] *= scale;
-    }
-  }
-}
 
 void DriveController::applyOutputs() {
   for (uint8_t i = 0; i < kWheelCount; ++i) {

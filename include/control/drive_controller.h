@@ -3,6 +3,7 @@
 #include <cstdint>
 
 #include "control/joystick.h"
+#include "control/wheel_state.h"
 #include "core/wheel.h"
 
 namespace robot {
@@ -11,18 +12,6 @@ namespace hal {
 class EncoderBank;
 class MotorDriver;
 }  // namespace hal
-
-// Per-wheel runtime state (setpoint, measurement, PID memory).
-struct WheelState {
-  float targetPwm = 0.0f;
-  float targetCps = 0.0f;
-  float measuredCps = 0.0f;
-  float filteredCps = 0.0f;
-  float integral = 0.0f;
-  float previousError = 0.0f;
-  int outputPwm = 0;
-  int32_t previousCount = 0;
-};
 
 // X-drive kinematics + asymmetric ramping + optional per-wheel PID + heading
 // lock. Call update() at a fixed ~50 Hz cadence; it emits motor PWM itself.
@@ -55,9 +44,6 @@ class DriveController {
   const WheelState &wheel(Wheel wheel) const { return wheels_[index(wheel)]; }
 
  private:
-  void mixWheels(float vx, float vy, float omega,
-                 float out[kWheelCount]) const;
-  int calculatePid(WheelState &wheel, size_t wheelIndex, float dt) const;
   void applyOutputs();
   float headingCorrection();
 

@@ -15,6 +15,9 @@ class EncoderBank {
   // Atomic snapshot of all four counters.
   void readCounts(int32_t counts[kWheelCount]) const;
 
+  // Atomically zero all four counters (start of a run).
+  void reset();
+
  private:
   // IRAM_ATTR is applied on the definitions (src/hal/encoder_bank.cpp) so this
   // header stays free of Arduino.h.
