@@ -208,17 +208,18 @@ void controlTick() {
                         static_cast<unsigned>(g_csv.rows()));
         }
       }
-
-      // Rows are only recorded while the test is actually running.
-      if (g_phase == Phase::kRun) {
-        g_csv.append(dt * 1.0e3f, counts, g_wheels);
-      }
       break;
     }
 
     case Phase::kDone:
       stopMotors();
       break;
+  }
+
+  // The wait phase is logged too: the tuning script uses that zero segment as
+  // its baseline, and STEP runs need the 0 -> amplitude edge inside the file.
+  if (g_phase == Phase::kWait || g_phase == Phase::kRun) {
+    g_csv.append(dt * 1.0e3f, counts, g_wheels);
   }
 }
 

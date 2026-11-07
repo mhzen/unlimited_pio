@@ -46,12 +46,13 @@ void CsvLog::append(float dtMs, const int32_t counts[kWheelCount],
 size_t CsvLog::header(char *out, size_t outSize) const {
   const int written = snprintf(
       out, outSize,
-      "# mode=%s axis=%s amplitude=%d rows=%u truncated=%d\n"
+      "# mode=%s axis=%s amplitude=%d use_pid=%d rows=%u truncated=%d\n"
       "dt_ms,encLF,encRF,encLB,encRB,pwmLF,pwmRF,pwmLB,pwmRB,"
       "tgtCpsLF,tgtCpsRF,tgtCpsLB,tgtCpsRB,"
       "measCpsLF,measCpsRF,measCpsLB,measCpsRB\n",
       modeName(kMode), axisName(kAxis), cfg::kAmplitudePwm,
-      static_cast<unsigned>(count_), truncated_ ? 1 : 0);
+      cfg::kUsePid ? 1 : 0, static_cast<unsigned>(count_),
+      truncated_ ? 1 : 0);
 
   if (written <= 0 || static_cast<size_t>(written) >= outSize) return 0;
   return static_cast<size_t>(written);

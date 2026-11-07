@@ -45,8 +45,9 @@ constexpr float kPrbsDurationS = 15.0f;
 constexpr uint32_t kPrbsBitPeriodMs = 200;
 constexpr uint16_t kPrbsSeed = 0x5A5A;
 
-// 1024 rows x 60 B = 61 kB, enough for 15 s at 50 Hz plus margin.
-constexpr size_t kMaxCsvRows = 1024;
+// Rows cover the start delay plus the run: 5 s wait + 15 s test at 50 Hz is
+// ~1000 rows, 1280 x 60 B = 77 kB leaves margin.
+constexpr size_t kMaxCsvRows = 1280;
 
 // -----------------------------------------------------------------------------
 // Wi-Fi access point (the only data path; no USB needed during a run)
